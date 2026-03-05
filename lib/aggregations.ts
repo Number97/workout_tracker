@@ -1,36 +1,67 @@
 import { WorkoutEntry, Category, CATEGORIES, WeeklyData, MonthlyData, MuscleBalance } from "./types";
-import { startOfWeek, format, parseISO, isWithinInterval, subDays } from "date-fns";
+import { startOfWeek, format, parseISO, subDays, parse, isValid } from "date-fns";
 
 // ISO week key: "2024-W01"
-function getWeekKey(dateStr: string): string {
-  const date = parseISO(dateStr);
+function getWeekKey(date: Date): string {
   const monday = startOfWeek(date, { weekStartsOn: 1 });
   return format(monday, "yyyy-'W'ww");
 }
 
-function getWeekLabel(dateStr: string): string {
-  const date = parseISO(dateStr);
+function getWeekLabel(date: Date): string {
   const monday = startOfWeek(date, { weekStartsOn: 1 });
   return format(monday, "MMM d");
 }
 
-function getMonthKey(dateStr: string): string {
-  return dateStr.slice(0, 7); // "2024-01"
+function getMonthKey(date: Date): string {
+  return format(date, "yyyy-MM");
 }
 
 function getMonthLabel(monthKey: string): string {
   return format(parseISO(`${monthKey}-01`), "MMM yyyy");
 }
 
+function parseEntryDate(dateStr: string): Date | null {
+  const raw = dateStr.trim();
+  if (!raw) return null;
+
+  const iso = parseISO(raw);
+  if (isValid(iso)) return iso;
+
+  const withoutWeekday = raw.includes(",") ? raw.split(",").slice(1).join(",").trim() : raw;
+  const candidates = [raw, withoutWeekday];
+  const patterns = [
+    "yyyy-MM-dd",
+    "dd.MM.yyyy",
+    "d.M.yyyy",
+    "EEEE, dd.MM.yyyy",
+    "EEEE, d.M.yyyy",
+    "EEE, dd.MM.yyyy",
+    "EEE, d.M.yyyy",
+  ];
+
+  for (const candidate of candidates) {
+    for (const pattern of patterns) {
+      const parsed = parse(candidate, pattern, new Date());
+      if (isValid(parsed)) return parsed;
+    }
+  }
+
+  const native = new Date(raw);
+  return Number.isNaN(native.getTime()) ? null : native;
+}
+
 export function getWeeklyData(entries: WorkoutEntry[], numWeeks = 12): WeeklyData[] {
   const weekMap = new Map<string, WeeklyData>();
 
   for (const entry of entries) {
-    const key = getWeekKey(entry.date);
+    const date = parseEntryDate(entry.date);
+    if (!date) continue;
+
+    const key = getWeekKey(date);
     if (!weekMap.has(key)) {
       weekMap.set(key, {
         week: key,
-        weekLabel: getWeekLabel(entry.date),
+        weekLabel: getWeekLabel(date),
         Back: 0, Chest: 0, Shoulders: 0, Arms: 0, Legs: 0, Abs: 0, Cardio: 0,
         total: 0,
       });
@@ -49,7 +80,10 @@ export function getMonthlyData(entries: WorkoutEntry[], numMonths = 12): Monthly
   const monthMap = new Map<string, MonthlyData>();
 
   for (const entry of entries) {
-    const key = getMonthKey(entry.date);
+    const date = parseEntryDate(entry.date);
+    if (!date) continue;
+
+    const key = getMonthKey(date);
     if (!monthMap.has(key)) {
       monthMap.set(key, { month: key, monthLabel: getMonthLabel(key), total: 0 });
     }
@@ -69,7 +103,9 @@ export function getMuscleBalance(entries: WorkoutEntry[], days = 30): MuscleBala
   };
 
   for (const entry of entries) {
-    const date = parseISO(entry.date);
+    const date = parseEntryDate(entry.date);
+    if (!date) continue;
+
     if (date >= cutoff) {
       totals[entry.category] += entry.score;
     }
@@ -79,12 +115,29 @@ export function getMuscleBalance(entries: WorkoutEntry[], days = 30): MuscleBala
 }
 
 export function getExerciseHistory(entries: WorkoutEntry[], exerciseName: string) {
+  const parsed = entries
+    .filter((e) => e.exerciseName.toLowerCase() === exerciseName.toLowerCase())
+    .map((e) => ({ entry: e, date: parseEntryDate(e.date) }))
+    .filter((x): x is { entry: WorkoutEntry; date: Date } => x.date !== null)
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+  if (parsed.length > 0) {
+    return parsed.map(({ entry, date }) => ({
+      date: entry.date,
+      dateLabel: format(date, "MMM d"),
+      score: entry.score,
+      weight: entry.weightMult,
+      reps: entry.effectiveReps,
+      sets: entry.setsIntensity,
+    }));
+  }
+
   return entries
     .filter((e) => e.exerciseName.toLowerCase() === exerciseName.toLowerCase())
     .sort((a, b) => a.date.localeCompare(b.date))
     .map((e) => ({
       date: e.date,
-      dateLabel: format(parseISO(e.date), "MMM d"),
+      dateLabel: e.date,
       score: e.score,
       weight: e.weightMult,
       reps: e.effectiveReps,
@@ -108,7 +161,11 @@ export function getPersonalRecords(entries: WorkoutEntry[], exerciseName: string
 export function getHeatmapData(entries: WorkoutEntry[]): Map<string, number> {
   const map = new Map<string, number>();
   for (const entry of entries) {
-    map.set(entry.date, (map.get(entry.date) ?? 0) + entry.score);
+    const date = parseEntryDate(entry.date);
+    if (!date) continue;
+
+    const key = format(date, "yyyy-MM-dd");
+    map.set(key, (map.get(key) ?? 0) + entry.score);
   }
   return map;
 }
@@ -116,8 +173,10 @@ export function getHeatmapData(entries: WorkoutEntry[]): Map<string, number> {
 export function getRecentEntries(entries: WorkoutEntry[], days = 7): WorkoutEntry[] {
   const cutoff = subDays(new Date(), days);
   return entries
-    .filter((e) => parseISO(e.date) >= cutoff)
-    .sort((a, b) => b.date.localeCompare(a.date));
+    .map((e) => ({ entry: e, date: parseEntryDate(e.date) }))
+    .filter((x): x is { entry: WorkoutEntry; date: Date } => x.date !== null && x.date >= cutoff)
+    .sort((a, b) => b.date.getTime() - a.date.getTime())
+    .map((x) => x.entry);
 }
 
 export function getAllExerciseNames(entries: WorkoutEntry[]): string[] {
