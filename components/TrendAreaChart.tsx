@@ -16,24 +16,24 @@ import {
 import { Category } from "@/lib/types";
 
 export const CATEGORY_COLORS: Record<Category, string> = {
-  Back: "#7FA7FF",
-  Chest: "#FF87C2",
-  Shoulders: "#B595FF",
-  Arms: "#FFB067",
-  Legs: "#59D5AA",
-  Abs: "#F2CD63",
-  Cardio: "#58D6E8",
+  Back: "#4D7CFF",
+  Chest: "#FF4FA3",
+  Shoulders: "#9D4DFF",
+  Arms: "#FF7A1A",
+  Legs: "#27E39C",
+  Abs: "#C9F31D",
+  Cardio: "#15D8FF",
 };
 
 // Very soft translucent fills
 const CATEGORY_FILLS: Record<Category, string> = {
-  Back: "rgba(127, 167, 255, 0.30)",
-  Chest: "rgba(255, 135, 194, 0.30)",
-  Shoulders: "rgba(181, 149, 255, 0.30)",
-  Arms: "rgba(255, 176, 103, 0.30)",
-  Legs: "rgba(89, 213, 170, 0.30)",
-  Abs: "rgba(242, 205, 99, 0.30)",
-  Cardio: "rgba(88, 214, 232, 0.30)",
+  Back: "rgba(77, 124, 255, 0.36)",
+  Chest: "rgba(255, 79, 163, 0.36)",
+  Shoulders: "rgba(157, 77, 255, 0.36)",
+  Arms: "rgba(255, 122, 26, 0.36)",
+  Legs: "rgba(39, 227, 156, 0.36)",
+  Abs: "rgba(201, 243, 29, 0.36)",
+  Cardio: "rgba(21, 216, 255, 0.36)",
 };
 
 export interface TrendPoint {
@@ -83,6 +83,11 @@ function formatAxisTick(v: number): string {
   return String(Math.round(v));
 }
 
+function yAxisHeadroomMax(dataMax: number): number {
+  if (!Number.isFinite(dataMax) || dataMax <= 0) return 10;
+  return Math.ceil(dataMax * 1.12);
+}
+
 function renderValueLabel(props: unknown) {
   const p = props as {
     index?: number;
@@ -127,7 +132,7 @@ export function TrendAreaChart({
     <ResponsiveContainer width="100%" height={240}>
       <AreaChart data={enrichedData} margin={{ top: 24, right: 16, bottom: 0, left: 0 }}>
         <CartesianGrid
-          stroke="rgba(148,163,184,0.10)"
+          stroke="rgba(148,163,184,0.14)"
           strokeDasharray="2 3"
           vertical
           horizontal
@@ -158,6 +163,7 @@ export function TrendAreaChart({
           tickLine={{ stroke: "rgba(148,163,184,0.28)" }}
           width={38}
           tickCount={5}
+          domain={[0, yAxisHeadroomMax]}
           tickFormatter={formatAxisTick}
         />
         <Tooltip
@@ -183,8 +189,9 @@ export function TrendAreaChart({
             type="linear"
             dataKey={getSeriesKey(category, metric)}
             stackId="stack"
-            stroke="none"
-            strokeWidth={0}
+            stroke={CATEGORY_COLORS[category]}
+            strokeWidth={0.45}
+            strokeOpacity={0.25}
             fill={CATEGORY_FILLS[category]}
             fillOpacity={0.95}
             activeDot={false}
