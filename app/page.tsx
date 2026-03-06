@@ -5,6 +5,7 @@ import {
   getQuarterlyData,
   getRecentEntries,
   getHeatmapData,
+  getYearlyData,
 } from "@/lib/aggregations";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { WorkoutHeatmap } from "@/components/WorkoutHeatmap";
@@ -31,6 +32,7 @@ export default async function DashboardPage() {
   const weekly26 = getWeeklyData(entries, 26);
   const monthly12 = getMonthlyData(entries, 12);
   const quarterly8 = getQuarterlyData(entries, 8);
+  const yearlyAll = getYearlyData(entries);
   const recent = getRecentEntries(entries, 7);
   const heatmap = getHeatmapData(entries);
 
@@ -42,6 +44,14 @@ export default async function DashboardPage() {
   const lastWeekSets = lastWeek?.totalSets ?? 0;
   const scoreDelta = lastWeekScore > 0 ? ((thisWeekScore - lastWeekScore) / lastWeekScore) * 100 : 0;
   const setsDelta = lastWeekSets > 0 ? ((thisWeekSets - lastWeekSets) / lastWeekSets) * 100 : 0;
+
+  const totalScore = entries.reduce((sum, e) => sum + e.score, 0);
+
+  const now = new Date();
+  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const thisMonthData = monthly12.find((m) => m.month === currentMonthKey);
+  const thisMonthScore = thisMonthData?.total ?? 0;
+  const thisMonthSets = thisMonthData?.totalSets ?? 0;
 
   const heatmapObj = Object.fromEntries(heatmap.entries());
 
@@ -61,19 +71,22 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Stats row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard value={thisWeekScore.toFixed(0)} label="Score this week" delta={scoreDelta} />
-        <StatCard value={String(thisWeekSets)} label="Sets this week" delta={setsDelta} />
-        <StatCard value={String(recent.length)} label="Sets last 7 days" />
-        <StatCard value={String(entries.length)} label="Total sets logged" />
+      {/* Compact stats */}
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-x-4 gap-y-3 px-1">
+        <StatItem value={Math.round(totalScore).toLocaleString()} label="Total score" />
+        <StatItem value={String(entries.length)} label="Total sets" />
+        <StatItem value={Math.round(thisWeekScore).toLocaleString()} label="Week score" delta={scoreDelta} />
+        <StatItem value={String(thisWeekSets)} label="Week sets" delta={setsDelta} />
+        <StatItem value={Math.round(thisMonthScore).toLocaleString()} label="Month score" />
+        <StatItem value={String(thisMonthSets)} label="Month sets" />
       </div>
 
-      {/* Score + Sets trend charts */}
+      {/* Charts */}
       <DashboardTrends
         weekly26={weekly26}
         monthly12={monthly12}
         quarterly8={quarterly8}
+        yearlyAll={yearlyAll}
       />
 
       {/* Heatmap */}
@@ -131,7 +144,7 @@ export default async function DashboardPage() {
   );
 }
 
-function StatCard({
+function StatItem({
   value,
   label,
   delta,
@@ -141,16 +154,14 @@ function StatCard({
   delta?: number;
 }) {
   return (
-    <Card>
-      <CardContent className="pt-4 pb-3 px-4">
-        <div className="text-2xl font-bold font-mono tabular-nums">{value}</div>
-        <div className="text-xs text-muted-foreground mt-0.5">{label}</div>
-        {delta !== undefined && delta !== 0 && (
-          <div className={`text-xs mt-1 font-medium ${delta > 0 ? "text-green-400" : "text-red-400"}`}>
-            {delta > 0 ? "+" : ""}{delta.toFixed(1)}% vs last week
-          </div>
-        )}
-      </CardContent>
-    </Card>
+    <div>
+      <div className="text-base font-bold font-mono tabular-nums leading-none">{value}</div>
+      <div className="text-[11px] text-muted-foreground mt-1">{label}</div>
+      {delta !== undefined && delta !== 0 && (
+        <div className={`text-[10px] mt-0.5 font-medium ${delta > 0 ? "text-green-400" : "text-red-400"}`}>
+          {delta > 0 ? "+" : ""}{delta.toFixed(0)}%
+        </div>
+      )}
+    </div>
   );
 }

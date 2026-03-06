@@ -56,6 +56,11 @@ export interface QuarterlyData extends VolumeTotals {
   quarterLabel: string; // "Q1 2024"
 }
 
+export interface YearlyData extends VolumeTotals {
+  year: string;       // "2024"
+  yearLabel: string;  // "2024"
+}
+
 export interface MuscleBalance {
   category: Category;
   score: number;

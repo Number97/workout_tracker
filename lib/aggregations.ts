@@ -5,6 +5,7 @@ import {
   WeeklyData,
   MonthlyData,
   QuarterlyData,
+  YearlyData,
   MuscleBalance,
   CategorySets,
   VolumeTotals,
@@ -258,6 +259,23 @@ export function getRecentEntries(entries: WorkoutEntry[], days = 7): WorkoutEntr
     .filter((x): x is { entry: WorkoutEntry; date: Date } => x.date !== null && x.date >= cutoff)
     .sort((a, b) => b.date.getTime() - a.date.getTime())
     .map((x) => x.entry);
+}
+
+export function getYearlyData(entries: WorkoutEntry[]): YearlyData[] {
+  const yearMap = new Map<string, YearlyData>();
+
+  for (const entry of entries) {
+    const date = parseEntryDate(entry.date);
+    if (!date) continue;
+
+    const key = format(date, "yyyy");
+    if (!yearMap.has(key)) {
+      yearMap.set(key, { year: key, yearLabel: key, ...createEmptyTotals() });
+    }
+    addEntryToTotals(yearMap.get(key)!, entry);
+  }
+
+  return Array.from(yearMap.values()).sort((a, b) => a.year.localeCompare(b.year));
 }
 
 export function getAllExerciseNames(entries: WorkoutEntry[]): string[] {

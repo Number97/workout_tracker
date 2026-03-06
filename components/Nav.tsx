@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
 
 const links = [
   { href: "/", label: "Dashboard" },
@@ -23,26 +22,39 @@ export function Nav() {
   }
 
   return (
-    <nav className="border-b border-border bg-card">
-      <div className="max-w-7xl mx-auto px-4 flex items-center gap-1 h-14">
-        <span className="font-semibold text-sm mr-4">Workout Tracker</span>
-        {links.map(({ href, label }) => (
-          <Link
-            key={href}
-            href={href}
-            className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
-              pathname === href
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted"
-            }`}
-          >
-            {label}
-          </Link>
-        ))}
+    <nav className="sticky top-0 z-40 border-b border-border/50 bg-background/80 backdrop-blur-md">
+      <div className="max-w-7xl mx-auto px-4 flex items-center h-13">
+        <span className="font-semibold text-sm mr-6 text-foreground tracking-tight">
+          Workout Tracker
+        </span>
+        <div className="flex items-center">
+          {links.map(({ href, label }) => {
+            const active = pathname === href;
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={`relative px-3 py-2 text-sm transition-colors ${
+                  active
+                    ? "text-foreground font-medium"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {label}
+                {active && (
+                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-[2px] bg-primary rounded-full" />
+                )}
+              </Link>
+            );
+          })}
+        </div>
         <div className="ml-auto">
-          <Button variant="ghost" size="sm" onClick={handleLogout}>
+          <button
+            onClick={handleLogout}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1"
+          >
             Log out
-          </Button>
+          </button>
         </div>
       </div>
     </nav>
