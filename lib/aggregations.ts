@@ -110,7 +110,7 @@ export function parseEntryDate(dateStr: string): Date | null {
   return Number.isNaN(native.getTime()) ? null : native;
 }
 
-export function getWeeklyData(entries: WorkoutEntry[], numWeeks = 12): WeeklyData[] {
+export function getWeeklyData(entries: WorkoutEntry[], numWeeks?: number): WeeklyData[] {
   const weekMap = new Map<string, WeeklyData>();
 
   for (const entry of entries) {
@@ -129,12 +129,11 @@ export function getWeeklyData(entries: WorkoutEntry[], numWeeks = 12): WeeklyDat
     addEntryToTotals(week, entry);
   }
 
-  return Array.from(weekMap.values())
-    .sort((a, b) => a.week.localeCompare(b.week))
-    .slice(-numWeeks);
+  const sorted = Array.from(weekMap.values()).sort((a, b) => a.week.localeCompare(b.week));
+  return typeof numWeeks === "number" ? sorted.slice(-numWeeks) : sorted;
 }
 
-export function getMonthlyData(entries: WorkoutEntry[], numMonths = 12): MonthlyData[] {
+export function getMonthlyData(entries: WorkoutEntry[], numMonths?: number): MonthlyData[] {
   const monthMap = new Map<string, MonthlyData>();
 
   for (const entry of entries) {
@@ -152,9 +151,8 @@ export function getMonthlyData(entries: WorkoutEntry[], numMonths = 12): Monthly
     addEntryToTotals(monthMap.get(key)!, entry);
   }
 
-  return Array.from(monthMap.values())
-    .sort((a, b) => a.month.localeCompare(b.month))
-    .slice(-numMonths);
+  const sorted = Array.from(monthMap.values()).sort((a, b) => a.month.localeCompare(b.month));
+  return typeof numMonths === "number" ? sorted.slice(-numMonths) : sorted;
 }
 
 export function getQuarterlyData(entries: WorkoutEntry[], numQuarters = 8): QuarterlyData[] {

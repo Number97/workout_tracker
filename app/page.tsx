@@ -2,7 +2,6 @@ import { getAllEntries } from "@/lib/sheets";
 import {
   getWeeklyData,
   getMonthlyData,
-  getQuarterlyData,
   getRecentEntries,
   getHeatmapData,
   getYearlyData,
@@ -29,15 +28,14 @@ const CATEGORY_COLORS: Record<string, string> = {
 export default async function DashboardPage() {
   const entries = await getAllEntries();
 
-  const weekly26 = getWeeklyData(entries, 26);
-  const monthly12 = getMonthlyData(entries, 12);
-  const quarterly8 = getQuarterlyData(entries, 8);
+  const weeklyAll = getWeeklyData(entries);
+  const monthlyAll = getMonthlyData(entries);
   const yearlyAll = getYearlyData(entries);
   const recent = getRecentEntries(entries, 7);
   const heatmap = getHeatmapData(entries);
 
-  const thisWeek = weekly26[weekly26.length - 1];
-  const lastWeek = weekly26[weekly26.length - 2];
+  const thisWeek = weeklyAll[weeklyAll.length - 1];
+  const lastWeek = weeklyAll[weeklyAll.length - 2];
   const thisWeekScore = thisWeek?.total ?? 0;
   const lastWeekScore = lastWeek?.total ?? 0;
   const thisWeekSets = thisWeek?.totalSets ?? 0;
@@ -49,9 +47,16 @@ export default async function DashboardPage() {
 
   const now = new Date();
   const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  const thisMonthData = monthly12.find((m) => m.month === currentMonthKey);
+  const previousMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const previousMonthKey = `${previousMonthDate.getFullYear()}-${String(previousMonthDate.getMonth() + 1).padStart(2, "0")}`;
+  const thisMonthData = monthlyAll.find((m) => m.month === currentMonthKey);
+  const lastMonthData = monthlyAll.find((m) => m.month === previousMonthKey);
   const thisMonthScore = thisMonthData?.total ?? 0;
   const thisMonthSets = thisMonthData?.totalSets ?? 0;
+  const lastMonthScore = lastMonthData?.total ?? 0;
+  const lastMonthSets = lastMonthData?.totalSets ?? 0;
+  const monthScoreDelta = lastMonthScore > 0 ? ((thisMonthScore - lastMonthScore) / lastMonthScore) * 100 : 0;
+  const monthSetsDelta = lastMonthSets > 0 ? ((thisMonthSets - lastMonthSets) / lastMonthSets) * 100 : 0;
 
   const heatmapObj = Object.fromEntries(heatmap.entries());
 
@@ -74,18 +79,37 @@ export default async function DashboardPage() {
       {/* Compact stats */}
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-x-4 gap-y-3 px-1">
         <StatItem value={Math.round(totalScore).toLocaleString()} label="Total score" />
+        <StatItem
+          value={Math.round(thisMonthScore).toLocaleString()}
+          label="Month score"
+          delta={monthScoreDelta}
+          deltaLabel="vs last month"
+        />
+        <StatItem
+          value={Math.round(thisWeekScore).toLocaleString()}
+          label="Week score"
+          delta={scoreDelta}
+          deltaLabel="vs last week"
+        />
         <StatItem value={String(entries.length)} label="Total sets" />
-        <StatItem value={Math.round(thisWeekScore).toLocaleString()} label="Week score" delta={scoreDelta} />
-        <StatItem value={String(thisWeekSets)} label="Week sets" delta={setsDelta} />
-        <StatItem value={Math.round(thisMonthScore).toLocaleString()} label="Month score" />
-        <StatItem value={String(thisMonthSets)} label="Month sets" />
+        <StatItem
+          value={String(thisMonthSets)}
+          label="Month sets"
+          delta={monthSetsDelta}
+          deltaLabel="vs last month"
+        />
+        <StatItem
+          value={String(thisWeekSets)}
+          label="Week sets"
+          delta={setsDelta}
+          deltaLabel="vs last week"
+        />
       </div>
 
       {/* Charts */}
       <DashboardTrends
-        weekly26={weekly26}
-        monthly12={monthly12}
-        quarterly8={quarterly8}
+        weeklyAll={weeklyAll}
+        monthlyAll={monthlyAll}
         yearlyAll={yearlyAll}
       />
 
@@ -148,10 +172,12 @@ function StatItem({
   value,
   label,
   delta,
+  deltaLabel,
 }: {
   value: string;
   label: string;
   delta?: number;
+  deltaLabel?: string;
 }) {
   return (
     <div>
@@ -159,7 +185,7 @@ function StatItem({
       <div className="text-[11px] text-muted-foreground mt-1">{label}</div>
       {delta !== undefined && delta !== 0 && (
         <div className={`text-[10px] mt-0.5 font-medium ${delta > 0 ? "text-green-400" : "text-red-400"}`}>
-          {delta > 0 ? "+" : ""}{delta.toFixed(0)}%
+          {delta > 0 ? "+" : ""}{delta.toFixed(0)}% {deltaLabel ?? ""}
         </div>
       )}
     </div>

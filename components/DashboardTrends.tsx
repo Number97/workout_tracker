@@ -1,18 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CATEGORIES, Category, WeeklyData, MonthlyData, QuarterlyData, YearlyData } from "@/lib/types";
+import { CATEGORIES, Category, WeeklyData, MonthlyData, YearlyData } from "@/lib/types";
 import { CATEGORY_COLORS, TrendAreaChart, TrendPoint } from "@/components/TrendAreaChart";
 import { cn } from "@/lib/utils";
 
 interface Props {
-  weekly26: WeeklyData[];
-  monthly12: MonthlyData[];
-  quarterly8: QuarterlyData[];
+  weeklyAll: WeeklyData[];
+  monthlyAll: MonthlyData[];
   yearlyAll: YearlyData[];
 }
 
-function toTrendPoint(label: string, data: WeeklyData | MonthlyData | QuarterlyData | YearlyData): TrendPoint {
+function toTrendPoint(label: string, data: WeeklyData | MonthlyData | YearlyData): TrendPoint {
   return {
     label,
     Back: data.Back,
@@ -37,7 +36,7 @@ function toTrendPoint(label: string, data: WeeklyData | MonthlyData | QuarterlyD
 function ChartBlock({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-1 mb-1">
+      <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-1 mb-1">
         {title}
       </div>
       {children}
@@ -45,8 +44,10 @@ function ChartBlock({ title, children }: { title: string; children: React.ReactN
   );
 }
 
-const WEEKLY_RANGES = [4, 8, 12, 26];
-const MONTHLY_RANGES = [3, 6, 12];
+type RangeOption = number | "max";
+
+const WEEKLY_RANGES: RangeOption[] = [4, 8, 12, 26, "max"];
+const MONTHLY_RANGES: RangeOption[] = [3, 6, 12, "max"];
 
 function RangeChips({
   ranges,
@@ -54,10 +55,10 @@ function RangeChips({
   suffix,
   onChange,
 }: {
-  ranges: number[];
-  selected: number;
+  ranges: RangeOption[];
+  selected: RangeOption;
   suffix: string;
-  onChange: (n: number) => void;
+  onChange: (n: RangeOption) => void;
 }) {
   return (
     <div className="flex items-center gap-1">
@@ -73,25 +74,29 @@ function RangeChips({
               : "text-muted-foreground hover:text-foreground"
           )}
         >
-          {r}{suffix}
+          {r === "max" ? "Max" : `${r}${suffix}`}
         </button>
       ))}
     </div>
   );
 }
 
-export function DashboardTrends({ weekly26, monthly12, yearlyAll }: Props) {
-  const [weeklyRange, setWeeklyRange] = useState(8);
-  const [monthlyRange, setMonthlyRange] = useState(12);
+export function DashboardTrends({ weeklyAll, monthlyAll, yearlyAll }: Props) {
+  const [weeklyRange, setWeeklyRange] = useState<RangeOption>(8);
+  const [monthlyRange, setMonthlyRange] = useState<RangeOption>(12);
   const [visibleCategories, setVisibleCategories] = useState<Category[]>([...CATEGORIES]);
 
+  function applyRange<T>(data: T[], range: RangeOption): T[] {
+    return range === "max" ? data : data.slice(-range);
+  }
+
   const weeklyData = useMemo(
-    () => weekly26.slice(-weeklyRange).map((r) => toTrendPoint(r.weekLabel, r)),
-    [weekly26, weeklyRange]
+    () => applyRange(weeklyAll, weeklyRange).map((r) => toTrendPoint(r.weekLabel, r)),
+    [weeklyAll, weeklyRange]
   );
   const monthlyData = useMemo(
-    () => monthly12.slice(-monthlyRange).map((r) => toTrendPoint(r.monthLabel, r)),
-    [monthly12, monthlyRange]
+    () => applyRange(monthlyAll, monthlyRange).map((r) => toTrendPoint(r.monthLabel, r)),
+    [monthlyAll, monthlyRange]
   );
   const yearlyData = useMemo(
     () => yearlyAll.map((r) => toTrendPoint(r.yearLabel, r)),
@@ -119,9 +124,9 @@ export function DashboardTrends({ weekly26, monthly12, yearlyAll }: Props) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {/* Duration controls */}
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-1">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border border-border/60 bg-muted/20 px-3 py-2">
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">Weekly</span>
           <RangeChips
@@ -142,33 +147,59 @@ export function DashboardTrends({ weekly26, monthly12, yearlyAll }: Props) {
         </div>
       </div>
 
-      {/* Score row */}
+      {/* Score first (mobile-friendly), then sets */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <ChartBlock title="Weekly Score">
-          <TrendAreaChart data={weeklyData} metric="score" visibleCategories={orderedVisible} />
+          <TrendAreaChart
+            data={weeklyData}
+            metric="score"
+            visibleCategories={orderedVisible}
+            showValueLabels={weeklyRange !== "max"}
+          />
         </ChartBlock>
         <ChartBlock title="Monthly Score">
-          <TrendAreaChart data={monthlyData} metric="score" visibleCategories={orderedVisible} />
+          <TrendAreaChart
+            data={monthlyData}
+            metric="score"
+            visibleCategories={orderedVisible}
+            showValueLabels={monthlyRange !== "max"}
+          />
         </ChartBlock>
       </div>
 
-      {/* Sets row */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <ChartBlock title="Weekly Sets">
-          <TrendAreaChart data={weeklyData} metric="sets" visibleCategories={orderedVisible} />
+          <TrendAreaChart
+            data={weeklyData}
+            metric="sets"
+            visibleCategories={orderedVisible}
+            showValueLabels={weeklyRange !== "max"}
+          />
         </ChartBlock>
         <ChartBlock title="Monthly Sets">
-          <TrendAreaChart data={monthlyData} metric="sets" visibleCategories={orderedVisible} />
+          <TrendAreaChart
+            data={monthlyData}
+            metric="sets"
+            visibleCategories={orderedVisible}
+            showValueLabels={monthlyRange !== "max"}
+          />
         </ChartBlock>
       </div>
 
-      {/* Yearly row */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <ChartBlock title="Yearly Score">
-          <TrendAreaChart data={yearlyData} metric="score" visibleCategories={orderedVisible} />
+          <TrendAreaChart
+            data={yearlyData}
+            metric="score"
+            visibleCategories={orderedVisible}
+          />
         </ChartBlock>
         <ChartBlock title="Yearly Sets">
-          <TrendAreaChart data={yearlyData} metric="sets" visibleCategories={orderedVisible} />
+          <TrendAreaChart
+            data={yearlyData}
+            metric="sets"
+            visibleCategories={orderedVisible}
+          />
         </ChartBlock>
       </div>
 
@@ -196,16 +227,13 @@ export function DashboardTrends({ weekly26, monthly12, yearlyAll }: Props) {
               onDoubleClick={() => showOnly(cat)}
               title="Click to toggle · Double-click to isolate"
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-all",
+                "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-all",
                 enabled
-                  ? "border-border/80 bg-card text-foreground"
+                  ? "border-border/80 bg-card"
                   : "border-border/30 bg-transparent text-muted-foreground/50"
               )}
+              style={enabled ? { color: CATEGORY_COLORS[cat] } : undefined}
             >
-              <span
-                className="inline-block h-2 w-2 rounded-full"
-                style={{ backgroundColor: enabled ? CATEGORY_COLORS[cat] : "rgba(148,163,184,0.3)" }}
-              />
               {cat}
             </button>
           );

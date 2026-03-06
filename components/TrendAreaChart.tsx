@@ -5,6 +5,7 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
+  Legend,
   Line,
   LabelList,
   ResponsiveContainer,
@@ -15,24 +16,24 @@ import {
 import { Category } from "@/lib/types";
 
 export const CATEGORY_COLORS: Record<Category, string> = {
-  Back: "#818cf8",
-  Chest: "#f472b6",
-  Shoulders: "#c084fc",
-  Arms: "#fb923c",
-  Legs: "#34d399",
-  Abs: "#fbbf24",
-  Cardio: "#22d3ee",
+  Back: "#8ea0ff",
+  Chest: "#ff9ecb",
+  Shoulders: "#c9a7ff",
+  Arms: "#ffbe88",
+  Legs: "#79ddb5",
+  Abs: "#f7d478",
+  Cardio: "#83e6f2",
 };
 
-// Muted fills — slightly darker than the border colors
+// Very soft translucent fills
 const CATEGORY_FILLS: Record<Category, string> = {
-  Back: "#4f46e5",
-  Chest: "#db2777",
-  Shoulders: "#9333ea",
-  Arms: "#ea580c",
-  Legs: "#059669",
-  Abs: "#d97706",
-  Cardio: "#0891b2",
+  Back: "rgba(142, 160, 255, 0.28)",
+  Chest: "rgba(255, 158, 203, 0.28)",
+  Shoulders: "rgba(201, 167, 255, 0.28)",
+  Arms: "rgba(255, 190, 136, 0.28)",
+  Legs: "rgba(121, 221, 181, 0.28)",
+  Abs: "rgba(247, 212, 120, 0.28)",
+  Cardio: "rgba(131, 230, 242, 0.28)",
 };
 
 export interface TrendPoint {
@@ -59,6 +60,7 @@ interface Props {
   data: TrendPoint[];
   metric: "score" | "sets";
   visibleCategories: Category[];
+  showValueLabels?: boolean;
 }
 
 function getSeriesKey(category: Category, metric: "score" | "sets"): string {
@@ -71,7 +73,22 @@ function formatLabel(v: number): string {
   return Math.round(v).toString();
 }
 
-export function TrendAreaChart({ data, metric, visibleCategories }: Props) {
+function legendColor(value: string): string {
+  const key = value.replace("Sets", "") as Category;
+  return CATEGORY_COLORS[key] ?? "#94a3b8";
+}
+
+function formatAxisTick(v: number): string {
+  if (v >= 1000) return `${Math.round(v / 1000)}k`;
+  return String(Math.round(v));
+}
+
+export function TrendAreaChart({
+  data,
+  metric,
+  visibleCategories,
+  showValueLabels = true,
+}: Props) {
   const enrichedData = useMemo(() => {
     return data.map((point) => {
       const visibleTotal = visibleCategories.reduce((sum, cat) => {
@@ -84,22 +101,40 @@ export function TrendAreaChart({ data, metric, visibleCategories }: Props) {
 
   return (
     <ResponsiveContainer width="100%" height={240}>
-      <AreaChart data={enrichedData} margin={{ top: 32, right: 16, bottom: 0, left: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.07)" vertical={false} />
+      <AreaChart data={enrichedData} margin={{ top: 24, right: 16, bottom: 0, left: 0 }}>
+        <CartesianGrid
+          stroke="rgba(148,163,184,0.10)"
+          strokeDasharray="2 3"
+          vertical
+          horizontal
+        />
+        <Legend
+          verticalAlign="top"
+          align="right"
+          iconSize={0}
+          wrapperStyle={{ fontSize: 11, paddingBottom: 8 }}
+          formatter={(value: string) => (
+            <span style={{ color: legendColor(value) }}>
+              {value.replace("Sets", "")}
+            </span>
+          )}
+        />
         <XAxis
           dataKey="label"
           tick={{ fontSize: 12, fill: "#94a3b8" }}
-          axisLine={false}
-          tickLine={false}
+          axisLine={{ stroke: "rgba(148,163,184,0.28)" }}
+          tickLine={{ stroke: "rgba(148,163,184,0.28)" }}
           interval="preserveStartEnd"
+          tickMargin={6}
         />
         <YAxis
           tick={{ fontSize: 12, fill: "#94a3b8" }}
           allowDecimals={false}
-          axisLine={false}
-          tickLine={false}
+          axisLine={{ stroke: "rgba(148,163,184,0.28)" }}
+          tickLine={{ stroke: "rgba(148,163,184,0.28)" }}
           width={38}
-          tickFormatter={(v: number) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v))}
+          tickCount={5}
+          tickFormatter={formatAxisTick}
         />
         <Tooltip
           contentStyle={{
@@ -124,29 +159,30 @@ export function TrendAreaChart({ data, metric, visibleCategories }: Props) {
             type="linear"
             dataKey={getSeriesKey(category, metric)}
             stackId="stack"
-            stroke={CATEGORY_COLORS[category]}
-            strokeWidth={1.5}
+            stroke="none"
+            strokeWidth={0}
             fill={CATEGORY_FILLS[category]}
-            fillOpacity={0.9}
-            activeDot={{ r: 4, strokeWidth: 0, fill: CATEGORY_COLORS[category] }}
+            fillOpacity={0.95}
+            activeDot={false}
           />
         ))}
-        {/* Invisible line to render total value labels above the stack */}
-        <Line
-          type="linear"
-          dataKey="_visibleTotal"
-          stroke="transparent"
-          dot={false}
-          activeDot={false}
-          legendType="none"
-        >
-          <LabelList
+        {showValueLabels && (
+          <Line
+            type="linear"
             dataKey="_visibleTotal"
-            position="top"
-            formatter={(v: unknown) => formatLabel(typeof v === "number" ? v : 0)}
-            style={{ fontSize: 11, fill: "#e2e8f0", fontWeight: 600 }}
-          />
-        </Line>
+            stroke="transparent"
+            dot={false}
+            activeDot={false}
+            legendType="none"
+          >
+            <LabelList
+              dataKey="_visibleTotal"
+              position="top"
+              formatter={(v: unknown) => formatLabel(typeof v === "number" ? v : 0)}
+              style={{ fontSize: 11, fill: "#e2e8f0", fontWeight: 600 }}
+            />
+          </Line>
+        )}
       </AreaChart>
     </ResponsiveContainer>
   );
