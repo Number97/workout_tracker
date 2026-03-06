@@ -11,6 +11,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CATEGORY_COLORS, TrendAreaChart, TrendPoint } from "@/components/TrendAreaChart";
+import { cn } from "@/lib/utils";
 
 type Granularity = "weekly" | "monthly" | "quarterly";
 
@@ -88,73 +89,113 @@ export function DashboardTrends({ weekly26, monthly12, quarterly8 }: Props) {
     setRangeByGranularity((prev) => ({ ...prev, [granularity]: range }));
   }
 
+  function showOnlyCategory(category: Category) {
+    setVisibleCategories([category]);
+  }
+
   return (
     <div className="space-y-4">
-      <Card>
+      <Card className="border-border/70 bg-card/70 backdrop-blur-sm">
         <CardHeader className="pb-2">
           <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
             Performance Filters
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 rounded-xl border border-border/60 bg-muted/30 p-2">
             {(["weekly", "monthly", "quarterly"] as const).map((mode) => (
               <Button
                 key={mode}
                 size="sm"
                 variant={granularity === mode ? "default" : "outline"}
                 onClick={() => setGranularity(mode)}
+                className="rounded-full"
               >
                 {titleCase(mode)}
               </Button>
             ))}
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 rounded-xl border border-border/60 bg-muted/30 p-2">
             {RANGE_OPTIONS[granularity].map((range) => (
               <Button
                 key={`${granularity}-${range}`}
                 size="sm"
                 variant={selectedRange === range ? "default" : "outline"}
                 onClick={() => setRange(range)}
+                className="rounded-full"
               >
                 {granularity === "weekly" ? `${range}w` : granularity === "monthly" ? `${range}m` : `${range}q`}
               </Button>
             ))}
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="space-y-2 rounded-xl border border-border/60 bg-muted/30 p-2.5">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant={visibleCategories.length === CATEGORIES.length ? "default" : "outline"}
+                onClick={() => setVisibleCategories([...CATEGORIES])}
+                className="rounded-full"
+              >
+                All
+              </Button>
+            </div>
             <Button
               size="sm"
-              variant={visibleCategories.length === CATEGORIES.length ? "default" : "outline"}
-              onClick={() => setVisibleCategories([...CATEGORIES])}
+              variant="ghost"
+              disabled
+              className="h-auto px-0 text-[11px] text-muted-foreground hover:bg-transparent"
             >
-              All
+              Click to show/hide. Press Only to isolate one muscle group.
             </Button>
-            {CATEGORIES.map((category) => {
-              const enabled = visibleCategories.includes(category);
-              return (
-                <Button
-                  key={category}
-                  size="sm"
-                  variant={enabled ? "default" : "outline"}
-                  onClick={() => toggleCategory(category)}
-                  className="gap-1.5"
-                >
-                  <span
-                    className="inline-block h-2.5 w-2.5 rounded-full"
-                    style={{ backgroundColor: CATEGORY_COLORS[category] }}
-                  />
-                  {category}
-                </Button>
-              );
-            })}
+            <div className="flex flex-wrap gap-2">
+              {CATEGORIES.map((category) => {
+                const enabled = visibleCategories.includes(category);
+                return (
+                  <div
+                    key={category}
+                    className={cn(
+                      "inline-flex items-center rounded-full border p-0.5",
+                      enabled ? "border-border bg-background" : "border-border/60 bg-muted/40 opacity-85"
+                    )}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => toggleCategory(category)}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                        enabled ? "text-foreground" : "text-muted-foreground"
+                      )}
+                    >
+                      <span
+                        className="inline-block h-2.5 w-2.5 rounded-full"
+                        style={{ backgroundColor: CATEGORY_COLORS[category] }}
+                      />
+                      {category}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => showOnlyCategory(category)}
+                      className={cn(
+                        "mr-0.5 rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors",
+                        enabled && visibleCategories.length === 1
+                          ? "border-primary/30 bg-primary/15 text-primary"
+                          : "border-border bg-background text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      Only
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </CardContent>
       </Card>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-        <Card>
+        <Card className="border-border/70 bg-card/70 backdrop-blur-sm">
           <CardHeader className="pb-1 pt-4 px-5">
             <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               {titleCase(granularity)} Score
@@ -169,7 +210,7 @@ export function DashboardTrends({ weekly26, monthly12, quarterly8 }: Props) {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-border/70 bg-card/70 backdrop-blur-sm">
           <CardHeader className="pb-1 pt-4 px-5">
             <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               {titleCase(granularity)} Sets

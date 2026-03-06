@@ -13,22 +13,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-type Mode = "ai" | "paste";
-
 export function PasteLogForm() {
-  const [mode, setMode] = useState<Mode>("ai");
-
-  // Shared state
   const [parsed, setParsed] = useState<ParsedLine[] | null>(null);
   const [saving, setSaving] = useState(false);
   const [savedCount, setSavedCount] = useState<number | null>(null);
   const [error, setError] = useState("");
-
-  // AI mode state
-  const [aiPrompt, setAiPrompt] = useState("");
-  const [aiLoading, setAiLoading] = useState(false);
-
-  // Paste mode state
   const [rawText, setRawText] = useState("");
 
   function reset() {
@@ -36,37 +25,6 @@ export function PasteLogForm() {
     setSavedCount(null);
     setError("");
     setRawText("");
-    setAiPrompt("");
-  }
-
-  async function handleAiGenerate() {
-    if (!aiPrompt.trim()) return;
-    setAiLoading(true);
-    setError("");
-    setParsed(null);
-    setSavedCount(null);
-
-    try {
-      const res = await fetch("/api/parse-workout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: aiPrompt }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "Failed to generate");
-        return;
-      }
-      if (!data.tsvText?.trim()) {
-        setError("ChatGPT didn't return any workout lines. Try rephrasing your description.");
-        return;
-      }
-      setParsed(parseTabSeparatedText(data.tsvText));
-    } catch {
-      setError("Network error calling AI");
-    } finally {
-      setAiLoading(false);
-    }
   }
 
   function handlePaste() {
@@ -120,7 +78,8 @@ export function PasteLogForm() {
       if (res.ok) {
         const data = await res.json();
         setSavedCount(data.count);
-        reset();
+        setParsed(null);
+        setRawText("");
       } else {
         const data = await res.json();
         setError(data.error ?? "Failed to save");
@@ -134,102 +93,54 @@ export function PasteLogForm() {
 
   return (
     <div className="space-y-5">
-      {/* Mode tabs */}
-      <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
-        <button
-          onClick={() => { setMode("ai"); reset(); }}
-          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-            mode === "ai"
-              ? "bg-card text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          AI Chat
-        </button>
-        <button
-          onClick={() => { setMode("paste"); reset(); }}
-          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-            mode === "paste"
-              ? "bg-card text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Paste
-        </button>
+      <div className="rounded-xl border border-border/70 bg-card/70 p-4 backdrop-blur-sm">
+        <p className="mb-3 text-sm text-muted-foreground">
+          Paste the tab-separated workout lines below, then preview and save.
+        </p>
+        <textarea
+          className="h-40 w-full resize-y rounded-md border border-input bg-background px-3 py-2 font-mono text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          placeholder={"2025-03-05\tChest\tBench Press\t10\t4\t80 kg\t10\t4\t80"}
+          value={rawText}
+          onChange={(e) => setRawText(e.target.value)}
+        />
+        <div className="mt-3 flex gap-2">
+          <Button onClick={handlePaste} disabled={!rawText.trim()}>
+            Preview
+          </Button>
+          {(parsed || rawText) && (
+            <Button variant="outline" onClick={reset}>
+              Clear
+            </Button>
+          )}
+        </div>
       </div>
 
-      {/* AI mode */}
-      {mode === "ai" && (
-        <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Describe your workout in plain language. The app sends it to ChatGPT using your exact prompt configuration and parses the result automatically.
-          </p>
-          <textarea
-            className="w-full h-40 rounded-md border border-input bg-background px-3 py-2 text-sm resize-y placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-            placeholder="e.g. Did 4 sets of 10 bench press at 80kg, then 3x12 incline dumbbell at 25kg each hand, finished with cable flyes 3x15 at 20kg..."
-            value={aiPrompt}
-            onChange={(e) => setAiPrompt(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleAiGenerate();
-            }}
-          />
-          <div className="flex gap-2">
-            <Button onClick={handleAiGenerate} disabled={!aiPrompt.trim() || aiLoading}>
-              {aiLoading ? "Generating…" : "Generate  ⌘↵"}
-            </Button>
-            {parsed && <Button variant="outline" onClick={reset}>Clear</Button>}
-          </div>
-        </div>
-      )}
-
-      {/* Paste mode */}
-      {mode === "paste" && (
-        <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Paste the tab-separated lines from ChatGPT below.
-          </p>
-          <textarea
-            className="w-full h-40 rounded-md border border-input bg-background px-3 py-2 text-sm font-mono resize-y placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-            placeholder={"2025-03-05\tChest\tBench Press\t10\t4\t80 kg\t10\t4\t80"}
-            value={rawText}
-            onChange={(e) => setRawText(e.target.value)}
-          />
-          <div className="flex gap-2">
-            <Button onClick={handlePaste} disabled={!rawText.trim()}>Preview</Button>
-            {parsed && <Button variant="outline" onClick={reset}>Clear</Button>}
-          </div>
-        </div>
-      )}
-
-      {/* Success */}
       {savedCount !== null && (
-        <div className="rounded-md bg-green-500/10 border border-green-500/20 px-4 py-3 text-sm text-green-400">
+        <div className="rounded-md border border-green-500/20 bg-green-500/10 px-4 py-3 text-sm text-green-400">
           Saved {savedCount} {savedCount === 1 ? "entry" : "entries"} to Google Sheets.
         </div>
       )}
 
-      {/* Error */}
       {error && (
-        <div className="rounded-md bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive">
+        <div className="rounded-md border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error}
         </div>
       )}
 
-      {/* Preview table */}
       {parsed && parsed.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">
-              <span className="text-foreground font-medium">{parsed.length}</span>{" "}
+              <span className="font-medium text-foreground">{parsed.length}</span>{" "}
               {parsed.length === 1 ? "line" : "lines"} · Total score:{" "}
               <span className="font-mono font-medium text-foreground">{totalScore.toFixed(0)}</span>
             </span>
             <Button onClick={handleSave} disabled={saving}>
-              {saving ? "Saving…" : `Save ${parsed.length} entries`}
+              {saving ? "Saving..." : `Save ${parsed.length} entries`}
             </Button>
           </div>
 
-          <div className="rounded-md border overflow-x-auto">
+          <div className="overflow-x-auto rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -242,7 +153,7 @@ export function PasteLogForm() {
                   <TableHead className="text-xs">Col7</TableHead>
                   <TableHead className="text-xs">Col8</TableHead>
                   <TableHead className="text-xs">Col9</TableHead>
-                  <TableHead className="text-xs text-right">Score</TableHead>
+                  <TableHead className="text-right text-xs">Score</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -253,15 +164,23 @@ export function PasteLogForm() {
                     </TableCell>
                     <TableCell>
                       <select
-                        className="text-xs rounded border border-input bg-background px-1 py-0.5"
+                        className="rounded border border-input bg-background px-1 py-0.5 text-xs"
                         value={line.category}
                         onChange={(e) => handleCellEdit(i, "category", e.target.value)}
                       >
-                        {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                        {CATEGORIES.map((c) => (
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
+                        ))}
                       </select>
                     </TableCell>
                     <TableCell>
-                      <EditableCell value={line.exerciseName} onChange={(v) => handleCellEdit(i, "exerciseName", v)} wide />
+                      <EditableCell
+                        value={line.exerciseName}
+                        onChange={(v) => handleCellEdit(i, "exerciseName", v)}
+                        wide
+                      />
                     </TableCell>
                     <TableCell>
                       <EditableCell value={line.repsText} onChange={(v) => handleCellEdit(i, "repsText", v)} />
@@ -270,22 +189,36 @@ export function PasteLogForm() {
                       <EditableCell value={line.setsText} onChange={(v) => handleCellEdit(i, "setsText", v)} />
                     </TableCell>
                     <TableCell>
-                      <EditableCell value={line.weightText} onChange={(v) => handleCellEdit(i, "weightText", v)} wide />
+                      <EditableCell
+                        value={line.weightText}
+                        onChange={(v) => handleCellEdit(i, "weightText", v)}
+                        wide
+                      />
                     </TableCell>
                     <TableCell>
-                      <EditableCell value={String(line.effectiveReps)} onChange={(v) => handleCellEdit(i, "effectiveReps", v)} numeric />
+                      <EditableCell
+                        value={String(line.effectiveReps)}
+                        onChange={(v) => handleCellEdit(i, "effectiveReps", v)}
+                        numeric
+                      />
                     </TableCell>
                     <TableCell>
-                      <EditableCell value={String(line.setsIntensity)} onChange={(v) => handleCellEdit(i, "setsIntensity", v)} numeric />
+                      <EditableCell
+                        value={String(line.setsIntensity)}
+                        onChange={(v) => handleCellEdit(i, "setsIntensity", v)}
+                        numeric
+                      />
                     </TableCell>
                     <TableCell>
-                      <EditableCell value={String(line.weightMult)} onChange={(v) => handleCellEdit(i, "weightMult", v)} numeric />
+                      <EditableCell
+                        value={String(line.weightMult)}
+                        onChange={(v) => handleCellEdit(i, "weightMult", v)}
+                        numeric
+                      />
                     </TableCell>
                     <TableCell className="text-right font-mono text-sm font-medium">
                       {line.score.toFixed(0)}
-                      {line.error && (
-                        <div className="text-xs text-destructive mt-0.5">{line.error}</div>
-                      )}
+                      {line.error && <div className="mt-0.5 text-xs text-destructive">{line.error}</div>}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -314,9 +247,9 @@ function EditableCell({
       type={numeric ? "number" : "text"}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className={`text-xs rounded border border-transparent hover:border-input focus:border-input bg-transparent px-1 py-0.5 focus:outline-none ${
+      className={`rounded border border-transparent bg-transparent px-1 py-0.5 text-xs hover:border-input focus:border-input focus:outline-none ${
         wide ? "min-w-32" : "min-w-16"
-      } ${numeric ? "font-mono w-16" : ""}`}
+      } ${numeric ? "w-16 font-mono" : ""}`}
     />
   );
 }

@@ -77,9 +77,9 @@ export function TrendAreaChart({ data, metric, visibleCategories }: Props) {
             stackId="stack"
             stroke={CATEGORY_COLORS[category]}
             fill={CATEGORY_COLORS[category]}
-            strokeWidth={2}
-            fillOpacity={0.28}
-            activeDot={{ r: 4 }}
+            strokeWidth={1}
+            fillOpacity={metric === "score" ? 0.2 : 0.15}
+            activeDot={{ r: 3 }}
           />
         ))}
       </AreaChart>
