@@ -33,11 +33,22 @@ function toTrendPoint(label: string, data: WeeklyData | MonthlyData | YearlyData
   };
 }
 
-function ChartBlock({ title, children }: { title: string; children: React.ReactNode }) {
+function ChartBlock({
+  title,
+  controls,
+  children,
+}: {
+  title: string;
+  controls?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <div>
-      <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-1 mb-1">
-        {title}
+      <div className="mb-1 flex items-center justify-between gap-2 px-1">
+        <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+          {title}
+        </div>
+        {controls}
       </div>
       {children}
     </div>
@@ -68,7 +79,7 @@ function RangeChips({
           type="button"
           onClick={() => onChange(r)}
           className={cn(
-            "rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors",
+            "rounded-md px-1.5 py-0.5 text-[10px] font-medium transition-colors",
             selected === r
               ? "bg-primary/20 text-primary"
               : "text-muted-foreground hover:text-foreground"
@@ -125,31 +136,19 @@ export function DashboardTrends({ weeklyAll, monthlyAll, yearlyAll }: Props) {
 
   return (
     <div className="space-y-5">
-      {/* Duration controls */}
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border border-border/60 bg-muted/20 px-3 py-2">
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">Weekly</span>
-          <RangeChips
-            ranges={WEEKLY_RANGES}
-            selected={weeklyRange}
-            suffix="w"
-            onChange={setWeeklyRange}
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">Monthly</span>
-          <RangeChips
-            ranges={MONTHLY_RANGES}
-            selected={monthlyRange}
-            suffix="m"
-            onChange={setMonthlyRange}
-          />
-        </div>
-      </div>
-
       {/* Score first (mobile-friendly), then sets */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <ChartBlock title="Weekly Score">
+        <ChartBlock
+          title="Weekly Score"
+          controls={
+            <RangeChips
+              ranges={WEEKLY_RANGES}
+              selected={weeklyRange}
+              suffix="w"
+              onChange={setWeeklyRange}
+            />
+          }
+        >
           <TrendAreaChart
             data={weeklyData}
             metric="score"
@@ -157,7 +156,17 @@ export function DashboardTrends({ weeklyAll, monthlyAll, yearlyAll }: Props) {
             showValueLabels={weeklyRange !== "max"}
           />
         </ChartBlock>
-        <ChartBlock title="Monthly Score">
+        <ChartBlock
+          title="Monthly Score"
+          controls={
+            <RangeChips
+              ranges={MONTHLY_RANGES}
+              selected={monthlyRange}
+              suffix="m"
+              onChange={setMonthlyRange}
+            />
+          }
+        >
           <TrendAreaChart
             data={monthlyData}
             metric="score"

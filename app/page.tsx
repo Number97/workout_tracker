@@ -62,18 +62,13 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold tracking-tight">Dashboard</h1>
-        <div className="flex items-center gap-2">
-          <RefreshButton />
-          <Link
-            href="/log"
-            className="inline-flex items-center rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-          >
-            + Log workout
-          </Link>
-        </div>
+      <div className="flex justify-end -mb-2">
+        <RefreshButton
+          label="↻"
+          variant="ghost"
+          size="icon-xs"
+          className="text-muted-foreground/70 hover:text-foreground"
+        />
       </div>
 
       {/* Compact stats */}

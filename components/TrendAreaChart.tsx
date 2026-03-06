@@ -16,24 +16,24 @@ import {
 import { Category } from "@/lib/types";
 
 export const CATEGORY_COLORS: Record<Category, string> = {
-  Back: "#8ea0ff",
-  Chest: "#ff9ecb",
-  Shoulders: "#c9a7ff",
-  Arms: "#ffbe88",
-  Legs: "#79ddb5",
-  Abs: "#f7d478",
-  Cardio: "#83e6f2",
+  Back: "#7FA7FF",
+  Chest: "#FF87C2",
+  Shoulders: "#B595FF",
+  Arms: "#FFB067",
+  Legs: "#59D5AA",
+  Abs: "#F2CD63",
+  Cardio: "#58D6E8",
 };
 
 // Very soft translucent fills
 const CATEGORY_FILLS: Record<Category, string> = {
-  Back: "rgba(142, 160, 255, 0.28)",
-  Chest: "rgba(255, 158, 203, 0.28)",
-  Shoulders: "rgba(201, 167, 255, 0.28)",
-  Arms: "rgba(255, 190, 136, 0.28)",
-  Legs: "rgba(121, 221, 181, 0.28)",
-  Abs: "rgba(247, 212, 120, 0.28)",
-  Cardio: "rgba(131, 230, 242, 0.28)",
+  Back: "rgba(127, 167, 255, 0.30)",
+  Chest: "rgba(255, 135, 194, 0.30)",
+  Shoulders: "rgba(181, 149, 255, 0.30)",
+  Arms: "rgba(255, 176, 103, 0.30)",
+  Legs: "rgba(89, 213, 170, 0.30)",
+  Abs: "rgba(242, 205, 99, 0.30)",
+  Cardio: "rgba(88, 214, 232, 0.30)",
 };
 
 export interface TrendPoint {
@@ -81,6 +81,30 @@ function legendColor(value: string): string {
 function formatAxisTick(v: number): string {
   if (v >= 1000) return `${Math.round(v / 1000)}k`;
   return String(Math.round(v));
+}
+
+function renderValueLabel(props: unknown) {
+  const p = props as {
+    index?: number;
+    x?: number;
+    y?: number;
+    value?: number;
+  };
+  if (p.index === 0 || !p.value || p.x == null || p.y == null) return null;
+
+  return (
+    <text
+      x={p.x}
+      y={p.y}
+      dy={-6}
+      textAnchor="middle"
+      fontSize={11}
+      fontWeight={600}
+      fill="#e2e8f0"
+    >
+      {formatLabel(p.value)}
+    </text>
+  );
 }
 
 export function TrendAreaChart({
@@ -178,8 +202,7 @@ export function TrendAreaChart({
             <LabelList
               dataKey="_visibleTotal"
               position="top"
-              formatter={(v: unknown) => formatLabel(typeof v === "number" ? v : 0)}
-              style={{ fontSize: 11, fill: "#e2e8f0", fontWeight: 600 }}
+              content={renderValueLabel}
             />
           </Line>
         )}
