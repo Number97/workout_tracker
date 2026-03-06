@@ -19,7 +19,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark">
       <body className={`${geistSans.variable} antialiased bg-background text-foreground`}>
         <Nav />
         <main className="max-w-7xl mx-auto px-4 py-6">{children}</main>

@@ -1,6 +1,31 @@
 export const CATEGORIES = ["Back", "Chest", "Shoulders", "Arms", "Legs", "Abs", "Cardio"] as const;
 export type Category = typeof CATEGORIES[number];
 
+export interface CategoryScores {
+  Back: number;
+  Chest: number;
+  Shoulders: number;
+  Arms: number;
+  Legs: number;
+  Abs: number;
+  Cardio: number;
+}
+
+export interface CategorySets {
+  BackSets: number;
+  ChestSets: number;
+  ShouldersSets: number;
+  ArmsSets: number;
+  LegsSets: number;
+  AbsSets: number;
+  CardioSets: number;
+}
+
+export interface VolumeTotals extends CategoryScores, CategorySets {
+  total: number;
+  totalSets: number;
+}
+
 export interface WorkoutEntry {
   // Row index in the sheet (1-based, includes header row offset)
   rowIndex: number;
@@ -16,23 +41,19 @@ export interface WorkoutEntry {
   score: number;          // col7 * col8 * col9
 }
 
-export interface WeeklyData {
-  week: string; // "2024-W01"
-  weekLabel: string; // "Jan 1"
-  Back: number;
-  Chest: number;
-  Shoulders: number;
-  Arms: number;
-  Legs: number;
-  Abs: number;
-  Cardio: number;
-  total: number;
+export interface WeeklyData extends VolumeTotals {
+  week: string;       // "2024-W01"
+  weekLabel: string;  // "Jan 1"
 }
 
-export interface MonthlyData {
-  month: string; // "2024-01"
+export interface MonthlyData extends VolumeTotals {
+  month: string;      // "2024-01"
   monthLabel: string; // "Jan 2024"
-  total: number;
+}
+
+export interface QuarterlyData extends VolumeTotals {
+  quarter: string;      // "2024-Q1"
+  quarterLabel: string; // "Q1 2024"
 }
 
 export interface MuscleBalance {

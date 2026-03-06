@@ -1,7 +1,16 @@
-import { WorkoutEntry, Category, CATEGORIES, WeeklyData, MonthlyData, MuscleBalance } from "./types";
+import {
+  WorkoutEntry,
+  Category,
+  CATEGORIES,
+  WeeklyData,
+  MonthlyData,
+  QuarterlyData,
+  MuscleBalance,
+  CategorySets,
+  VolumeTotals,
+} from "./types";
 import { startOfWeek, format, parseISO, subDays, parse, isValid } from "date-fns";
 
-// ISO week key: "2024-W01"
 function getWeekKey(date: Date): string {
   const monday = startOfWeek(date, { weekStartsOn: 1 });
   return format(monday, "yyyy-'W'ww");
@@ -20,7 +29,57 @@ function getMonthLabel(monthKey: string): string {
   return format(parseISO(`${monthKey}-01`), "MMM yyyy");
 }
 
-function parseEntryDate(dateStr: string): Date | null {
+function getQuarter(date: Date): number {
+  return Math.floor(date.getMonth() / 3) + 1;
+}
+
+function getQuarterKey(date: Date): string {
+  return `${format(date, "yyyy")}-Q${getQuarter(date)}`;
+}
+
+function getQuarterLabel(date: Date): string {
+  return `Q${getQuarter(date)} ${format(date, "yyyy")}`;
+}
+
+function createEmptyTotals(): VolumeTotals {
+  return {
+    Back: 0,
+    Chest: 0,
+    Shoulders: 0,
+    Arms: 0,
+    Legs: 0,
+    Abs: 0,
+    Cardio: 0,
+    BackSets: 0,
+    ChestSets: 0,
+    ShouldersSets: 0,
+    ArmsSets: 0,
+    LegsSets: 0,
+    AbsSets: 0,
+    CardioSets: 0,
+    total: 0,
+    totalSets: 0,
+  };
+}
+
+const CATEGORY_SET_KEYS: Record<Category, keyof CategorySets> = {
+  Back: "BackSets",
+  Chest: "ChestSets",
+  Shoulders: "ShouldersSets",
+  Arms: "ArmsSets",
+  Legs: "LegsSets",
+  Abs: "AbsSets",
+  Cardio: "CardioSets",
+};
+
+function addEntryToTotals(target: VolumeTotals, entry: WorkoutEntry): void {
+  target[entry.category] += entry.score;
+  target.total += entry.score;
+  target[CATEGORY_SET_KEYS[entry.category]] += 1;
+  target.totalSets += 1;
+}
+
+export function parseEntryDate(dateStr: string): Date | null {
   const raw = dateStr.trim();
   if (!raw) return null;
 
@@ -62,13 +121,11 @@ export function getWeeklyData(entries: WorkoutEntry[], numWeeks = 12): WeeklyDat
       weekMap.set(key, {
         week: key,
         weekLabel: getWeekLabel(date),
-        Back: 0, Chest: 0, Shoulders: 0, Arms: 0, Legs: 0, Abs: 0, Cardio: 0,
-        total: 0,
+        ...createEmptyTotals(),
       });
     }
     const week = weekMap.get(key)!;
-    week[entry.category] += entry.score;
-    week.total += entry.score;
+    addEntryToTotals(week, entry);
   }
 
   return Array.from(weekMap.values())
@@ -85,14 +142,41 @@ export function getMonthlyData(entries: WorkoutEntry[], numMonths = 12): Monthly
 
     const key = getMonthKey(date);
     if (!monthMap.has(key)) {
-      monthMap.set(key, { month: key, monthLabel: getMonthLabel(key), total: 0 });
+      monthMap.set(key, {
+        month: key,
+        monthLabel: getMonthLabel(key),
+        ...createEmptyTotals(),
+      });
     }
-    monthMap.get(key)!.total += entry.score;
+    addEntryToTotals(monthMap.get(key)!, entry);
   }
 
   return Array.from(monthMap.values())
     .sort((a, b) => a.month.localeCompare(b.month))
     .slice(-numMonths);
+}
+
+export function getQuarterlyData(entries: WorkoutEntry[], numQuarters = 8): QuarterlyData[] {
+  const quarterMap = new Map<string, QuarterlyData>();
+
+  for (const entry of entries) {
+    const date = parseEntryDate(entry.date);
+    if (!date) continue;
+
+    const key = getQuarterKey(date);
+    if (!quarterMap.has(key)) {
+      quarterMap.set(key, {
+        quarter: key,
+        quarterLabel: getQuarterLabel(date),
+        ...createEmptyTotals(),
+      });
+    }
+    addEntryToTotals(quarterMap.get(key)!, entry);
+  }
+
+  return Array.from(quarterMap.values())
+    .sort((a, b) => a.quarter.localeCompare(b.quarter))
+    .slice(-numQuarters);
 }
 
 export function getMuscleBalance(entries: WorkoutEntry[], days = 30): MuscleBalance[] {
@@ -105,7 +189,6 @@ export function getMuscleBalance(entries: WorkoutEntry[], days = 30): MuscleBala
   for (const entry of entries) {
     const date = parseEntryDate(entry.date);
     if (!date) continue;
-
     if (date >= cutoff) {
       totals[entry.category] += entry.score;
     }
@@ -157,13 +240,11 @@ export function getPersonalRecords(entries: WorkoutEntry[], exerciseName: string
   };
 }
 
-// Heatmap: map of date string → total score
 export function getHeatmapData(entries: WorkoutEntry[]): Map<string, number> {
   const map = new Map<string, number>();
   for (const entry of entries) {
     const date = parseEntryDate(entry.date);
     if (!date) continue;
-
     const key = format(date, "yyyy-MM-dd");
     map.set(key, (map.get(key) ?? 0) + entry.score);
   }

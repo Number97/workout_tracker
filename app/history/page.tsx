@@ -1,5 +1,6 @@
 import { getAllEntries } from "@/lib/sheets";
 import { HistoryTable } from "@/components/HistoryTable";
+import { RefreshButton } from "@/components/RefreshButton";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +9,10 @@ export default async function HistoryPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">History</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold tracking-tight">History</h1>
+        <RefreshButton />
+      </div>
       <HistoryTable initialEntries={entries} />
     </div>
   );
